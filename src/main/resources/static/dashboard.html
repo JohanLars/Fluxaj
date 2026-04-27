@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxaj - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootswatch@5.3.0/dist/darkly/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        .modulo { display: none; animation: fadeIn 0.3s; }
+        .modulo.activo { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .nav-tabs .nav-link { cursor: pointer; color: #aaa; }
+        .nav-tabs .nav-link.active { font-weight: bold; color: #fff; }
+    </style>
+</head>
+<body class="bg-dark text-light">
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center">
+            <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="me-3">
+                <rect x="10" y="10" width="80" height="80" rx="20" fill="#2b2b2b" stroke="#3498db" stroke-width="6"/>
+                <path d="M30 50 L45 65 L70 35" stroke="#3498db" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="70" cy="70" r="8" fill="#e74c3c"/>
+            </svg>
+            <a href="/index.html" class="text-decoration-none text-light">
+                <h2 class="mb-0 fw-light" style="letter-spacing: 1px;">FLUXAJ</h2>
+            </a>
+        </div>
+        <div class="text-end d-flex align-items-center gap-3">
+            <div id="infoUsuario" class="d-none d-flex align-items-center gap-2">
+                <span id="nombreUsuario" class="fw-bold text-info"></span>
+                <span id="rolUsuario" class="badge bg-secondary"></span>
+            </div>
+            <!-- Logout real via POST — invalida la sesión en el servidor -->
+            <form method="post" action="/logout">
+                <button type="submit" class="btn btn-outline-danger">Cerrar Sesión</button>
+            </form>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-4 border-secondary">
+        <li class="nav-item">
+            <a class="nav-link active activo" id="tab-gestion" onclick="verModulo('gestion')">Mis Suscripciones</a>
+        </li>
+        <li class="nav-item d-none" id="nav-admin">
+            <a class="nav-link text-warning" id="tab-admin" onclick="verModulo('admin')">Panel de Auditoría (Admin)</a>
+        </li>
+    </ul>
+
+    <div id="modulo-gestion" class="modulo activo">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card text-white bg-primary shadow-sm border-0 h-100">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <h5 class="card-title">Gasto Total Mensual</h5>
+                        <h2 class="card-text" id="kpiTotal" style="font-family: monospace;">$0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card text-white bg-success shadow-sm border-0 h-100">
+                    <div class="card-body d-flex flex-column justify-content-center">
+                        <h5 class="card-title">Suscripciones Activas</h5>
+                        <h2 class="card-text" id="kpiActivas">0</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card shadow-sm border-secondary">
+                    <div class="card-body bg-secondary text-center">
+                        <h5 class="card-title text-light">Distribución de Gastos por Proveedor</h5>
+                        <div style="height: 250px; display: flex; justify-content: center;">
+                            <canvas id="graficoSuscripciones"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4 border-secondary">
+            <div class="card-body bg-secondary">
+                <h5 class="card-title text-light">Gestión de Suscripción</h5>
+                <form id="formSuscripcion" class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="proveedor" placeholder="Ej. Netflix, Spotify" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control" id="monto" placeholder="Monto (Ej: 50000)" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" id="fechaCobro" required>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-success" id="btnGuardar">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <input type="text" id="filtroProveedor" class="form-control bg-dark text-light border-secondary" placeholder="Filtrar por proveedor..." onkeyup="filtrarTabla()">
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-outline-info" onclick="descargarPDF()">❖ Descargar Reporte PDF</button>
+            </div>
+            <button class="btn btn-outline-success" onclick="escanearGmail()"> Escanear mi Gmail</button>
+            </div>
+
+        <div class="card shadow-sm border-secondary mb-5">
+            <div class="card-body bg-secondary">
+                <table class="table table-hover table-dark mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Proveedor</th><th>Monto</th>
+                            <th>Fecha de Cobro</th><th>Estado</th><th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaSuscripciones"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="modulo-admin" class="modulo">
+        <div class="alert alert-warning shadow-sm border-0 mb-4">
+            <strong>Panel de Control:</strong> Aquí puedes auditar y eliminar permanentemente cualquier suscripción del sistema.
+        </div>
+        <div class="card shadow-sm border-secondary mb-5">
+            <div class="card-body bg-secondary">
+                <h5 class="card-title text-light mb-3">Base de Datos Global</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover table-dark mb-0">
+                        <thead class="text-warning">
+                            <tr>
+                                <th>ID DB</th><th>Usuario / Correo</th><th>Proveedor</th>
+                                <th>Monto</th><th>Cobro</th><th>Auditoría</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaAdmin"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_URL = '/api/suscripciones';
+    let editandoId = null;
+    let miGrafico = null;
+    let rolGlobal = 'USER';
+
+    const formater = new Intl.NumberFormat('es-CO', {
+        style: 'currency', currency: 'COP', minimumFractionDigits: 0
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        cargarUsuario();
+        cargarSuscripciones();
+    });
+
+    function verModulo(modulo) {
+        document.querySelectorAll('.modulo').forEach(m => m.classList.remove('activo'));
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active', 'activo'));
+        document.getElementById(`modulo-${modulo}`).classList.add('activo');
+        document.getElementById(`tab-${modulo}`).classList.add('active', 'activo');
+        if (modulo === 'admin' && rolGlobal === 'ADMIN') cargarDatosAdmin();
+    }
+
+    function cargarUsuario() {
+        fetch(`${API_URL}/me`)
+            .then(res => { if (res.ok) return res.json(); throw new Error("No autenticado"); })
+            .then(user => {
+                if (user && user.nombre) {
+                    rolGlobal = user.rol;
+                    document.getElementById('nombreUsuario').innerText = `Hola, ${user.nombre}`;
+                    document.getElementById('rolUsuario').innerText = user.rol;
+                    if (user.rol === 'ADMIN') {
+                        document.getElementById('rolUsuario').classList.replace('bg-secondary', 'bg-danger');
+                        document.getElementById('nav-admin').classList.remove('d-none');
+                    }
+                    document.getElementById('infoUsuario').classList.remove('d-none');
+                }
+            })
+            .catch(() => console.log("Usuario visitante"));
+    }
+
+    function cargarSuscripciones() {
+        fetch(API_URL)
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('tablaSuscripciones');
+                tbody.innerHTML = '';
+                let sumaTotal = 0, conteoActivas = 0;
+                const gastosAgrupados = {};
+
+                data.forEach((sub, index) => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td><strong>${sub.proveedor}</strong></td>
+                            <td style="font-family:monospace;color:#3498db;">${formater.format(sub.monto)}</td>
+                            <td>${sub.fechaCobro}</td>
+                            <td><span class="badge ${sub.activa ? 'bg-success' : 'bg-danger'}">${sub.activa ? 'Activa' : 'Inactiva'}</span></td>
+                            <td>
+                                <button onclick="cargarParaEditar(${sub.id},'${sub.proveedor}',${sub.monto},'${sub.fechaCobro}')" class="btn btn-sm btn-warning">Editar</button>
+                            </td>
+                        </tr>`;
+                    sumaTotal += sub.monto;
+                    if (sub.activa) conteoActivas++;
+                    gastosAgrupados[sub.proveedor] = (gastosAgrupados[sub.proveedor] || 0) + sub.monto;
+                });
+
+                document.getElementById('kpiTotal').innerText = formater.format(sumaTotal);
+                document.getElementById('kpiActivas').innerText = conteoActivas;
+
+                if (miGrafico) miGrafico.destroy();
+                const ctx = document.getElementById('graficoSuscripciones').getContext('2d');
+                miGrafico = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(gastosAgrupados),
+                        datasets: [{
+                            data: Object.values(gastosAgrupados),
+                            backgroundColor: ['#3498db','#e74c3c','#f1c40f','#2ecc71','#9b59b6','#e67e22','#1abc9c','#34495e'],
+                            borderColor: '#2b2b2b', borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { position: 'right', labels: { color: '#ffffff' } } }
+                    }
+                });
+            })
+            .catch(err => console.error(err));
+    }
+
+    function cargarDatosAdmin() {
+        fetch(`${API_URL}/admin/all`)
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('tablaAdmin');
+                tbody.innerHTML = '';
+                data.forEach(sub => {
+                    const correo = sub.usuario?.email || 'Local';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="text-muted">${sub.id}</td>
+                            <td class="text-info">${correo}</td>
+                            <td><strong>${sub.proveedor}</strong></td>
+                            <td style="font-family:monospace;">${formater.format(sub.monto)}</td>
+                            <td>${sub.fechaCobro}</td>
+                            <td><button onclick="eliminarDesdeAdmin(${sub.id})" class="btn btn-sm btn-danger">Borrar</button></td>
+                        </tr>`;
+                });
+            });
+    }
+
+    function cargarParaEditar(id, proveedor, monto, fecha) {
+        document.getElementById('proveedor').value = proveedor;
+        document.getElementById('monto').value = monto;
+        document.getElementById('fechaCobro').value = fecha;
+        editandoId = id;
+        const btn = document.getElementById('btnGuardar');
+        btn.textContent = "Actualizar";
+        btn.classList.replace('btn-success', 'btn-warning');
+        window.scrollTo(0, 0);
+    }
+
+    document.getElementById('formSuscripcion').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const subData = {
+            proveedor: document.getElementById('proveedor').value,
+            monto: parseFloat(document.getElementById('monto').value),
+            fechaCobro: document.getElementById('fechaCobro').value,
+            activa: true
+        };
+        const metodoHttp = editandoId ? 'PUT' : 'POST';
+        const rutaHttp = editandoId ? `${API_URL}/${editandoId}` : API_URL;
+
+        fetch(rutaHttp, {
+            method: metodoHttp,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subData)
+        }).then(() => {
+            document.getElementById('formSuscripcion').reset();
+            editandoId = null;
+            const btn = document.getElementById('btnGuardar');
+            btn.textContent = "Guardar";
+            btn.classList.replace('btn-warning', 'btn-success');
+            cargarSuscripciones();
+            if (rolGlobal === 'ADMIN') cargarDatosAdmin();
+        });
+    });
+
+    function eliminarDesdeAdmin(id) {
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: "Borrarás permanentemente esta suscripción de la base de datos.",
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+            background: '#2b2b2b', color: '#ffffff'
+        }).then(result => {
+            if (result.isConfirmed) {
+                fetch(`${API_URL}/${id}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.status === 403) {
+                            Swal.fire({ icon: 'error', title: 'Acceso Denegado', background: '#2b2b2b', color: '#ffffff' });
+                        } else if (response.ok) {
+                            Swal.fire({ icon: 'success', title: '¡Eliminada!', background: '#2b2b2b', color: '#ffffff', timer: 1500, showConfirmButton: false });
+                            cargarDatosAdmin();
+                            cargarSuscripciones();
+                        }
+                    });
+            }
+        });
+    }
+
+    function filtrarTabla() {
+        const texto = document.getElementById('filtroProveedor').value.toLowerCase();
+        const filas = document.getElementById('tablaSuscripciones').getElementsByTagName('tr');
+        for (let fila of filas) {
+            const col = fila.getElementsByTagName('td')[1];
+            if (col) fila.style.display = col.textContent.toLowerCase().includes(texto) ? '' : 'none';
+        }
+    }
+
+    function descargarPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.setTextColor(52, 152, 219);
+        doc.text("FLUXAJ - Reporte de Suscripciones", 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text("Generado el: " + new Date().toLocaleDateString(), 14, 30);
+        const filas = [];
+        const trs = document.getElementById('tablaSuscripciones').getElementsByTagName('tr');
+        for (let tr of trs) {
+            if (tr.style.display !== "none") {
+                const tds = tr.getElementsByTagName('td');
+                if (tds.length > 0) filas.push([tds[0].innerText, tds[1].innerText, tds[2].innerText, tds[3].innerText, tds[4].innerText]);
+            }
+        }
+        doc.autoTable({
+            startY: 35,
+            head: [['#', 'Proveedor', 'Monto', 'Fecha Cobro', 'Estado']],
+            body: filas,
+            theme: 'grid',
+            headStyles: { fillColor: [43, 43, 43], textColor: [255, 255, 255] },
+            alternateRowStyles: { fillColor: [245, 245, 245] },
+            styles: { font: 'helvetica', fontSize: 10 }
+        });
+        doc.save("Reporte_Fluxaj.pdf");
+        function escanearGmail() {
+    Swal.fire({
+        title: 'Escanear correos',
+        text: 'Fluxaj analizará los encabezados de tus recibos en Gmail. Nunca lee correos personales.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, escanear',
+        cancelButtonText: 'Cancelar',
+        background: '#2b2b2b',
+        color: '#ffffff'
+    }).then(result => {
+        if (result.isConfirmed) {
+            fetch('/api/suscripciones/escanear', { method: 'POST' })
+                .then(res => res.text())
+                .then(msg => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Escaneo iniciado!',
+                        text: msg,
+                        background: '#2b2b2b',
+                        color: '#ffffff',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                    // Recargar tabla después de 4 segundos para mostrar resultados
+                    setTimeout(cargarSuscripciones, 4000);
+                });
+        }
+    });
+}
+    }
+    function escanearGmail() {
+    Swal.fire({
+        title: 'Escanear correos',
+        text: 'Fluxaj analizará los encabezados de tus recibos en Gmail. Nunca lee correos personales.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, escanear',
+        cancelButtonText: 'Cancelar',
+        background: '#2b2b2b',
+        color: '#ffffff'
+    }).then(result => {
+        if (result.isConfirmed) {
+            fetch('/api/suscripciones/escanear', { method: 'POST' })
+                .then(res => res.text())
+                .then(msg => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Escaneo iniciado!',
+                        text: msg,
+                        background: '#2b2b2b',
+                        color: '#ffffff',
+                        timer: 3000,
+                        showConfirmButton: false
+                    });
+                    // Recargar tabla después de 4 segundos para mostrar resultados
+                    setTimeout(cargarSuscripciones, 4000);
+                });
+        }
+    });
+}
+
+    
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
