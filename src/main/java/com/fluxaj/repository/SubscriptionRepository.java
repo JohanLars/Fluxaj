@@ -14,4 +14,5 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     // Consulta por ID del usuario, suscripciones asociadas
     @Query("SELECT s FROM Subscription s WHERE s.usuario.id = :usuarioId")
     List<Subscription> findByUsuarioId(@Param("usuarioId") Long usuarioId);
+    
 }

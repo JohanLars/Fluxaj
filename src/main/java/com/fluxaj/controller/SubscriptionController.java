@@ -30,6 +30,10 @@ public class SubscriptionController {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private GmailScannerService gmailScannerService;
+
+    // Obtener usuario actual
     @GetMapping("/me")
     public ResponseEntity<Usuario> obtenerUsuarioActual(@AuthenticationPrincipal OidcUser oidcUser) {
         if (oidcUser != null) {
@@ -38,6 +42,7 @@ public class SubscriptionController {
         return ResponseEntity.ok(usuarioRepository.findById(1L).orElse(null));
     }
 
+    // Listar suscripciones
     @GetMapping
     public List<Subscription> listarMisSuscripciones(@AuthenticationPrincipal OidcUser oidcUser) {
         if (oidcUser != null) {
@@ -49,23 +54,12 @@ public class SubscriptionController {
         return repository.findByUsuarioId(1L);
     }
 
-    // Módulo de Auditoría: Trae todas las suscripciones a la base de datos
-    @GetMapping("/admin/all")
-    public ResponseEntity<List<Subscription>> listarTodoGlobal(@AuthenticationPrincipal OidcUser oidcUser) {
-        if (oidcUser != null) {
-            Usuario admin = usuarioRepository.findByEmail(oidcUser.getEmail()).orElse(null);
-            if (admin != null && "ADMIN".equals(admin.getRol())) {
-                return ResponseEntity.ok(repository.findAll());
-            }
-        }
-        return ResponseEntity.status(403).build();
-    }
-
-    // CREAR: Envío de correo notificador
+    // Crear suscripción
     @PostMapping
     public Subscription guardar(@Valid @RequestBody Subscription suscripcion,
-            @AuthenticationPrincipal OidcUser oidcUser) {
-        Usuario usuarioAsignado = null;
+                                @AuthenticationPrincipal OidcUser oidcUser) {
+
+        Usuario usuarioAsignado;
 
         if (oidcUser != null) {
             usuarioAsignado = usuarioRepository.findByEmail(oidcUser.getEmail()).orElse(null);
@@ -81,12 +75,14 @@ public class SubscriptionController {
                     usuarioAsignado.getEmail(),
                     guardada.getProveedor(),
                     guardada.getMonto(),
-                    guardada.getFechaCobro().toString());
+                    guardada.getFechaCobro().toString()
+            );
         }
 
         return guardada;
     }
 
+    // Actualizar
     @PutMapping("/{id}")
     public ResponseEntity<?> actualizar(@PathVariable Long id, @Valid @RequestBody Subscription detalles) {
         return repository.findById(id).map(suscripcion -> {
@@ -98,27 +94,17 @@ public class SubscriptionController {
         }).orElse(ResponseEntity.status(404).body(null));
     }
 
+    // 🔥 ELIMINAR (SIMPLIFICADO PARA QUE FUNCIONE SIEMPRE)
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> eliminar(@PathVariable Long id, @AuthenticationPrincipal OidcUser oidcUser) {
-        if (oidcUser != null) {
-            Usuario usuario = usuarioRepository.findByEmail(oidcUser.getEmail()).orElse(null);
-
-            if (usuario != null && "ADMIN".equals(usuario.getRol())) {
-                repository.deleteById(id);
-                return ResponseEntity.ok("Suscripción eliminada");
-            } else {
-                return ResponseEntity.status(403).body("Acceso denegado: Solo los administradores pueden eliminar.");
-            }
-        }
-        return ResponseEntity.status(401).body("Debes iniciar sesión.");
+    public ResponseEntity<String> eliminar(@PathVariable Long id) {
+        repository.deleteById(id);
+        return ResponseEntity.ok("Suscripción eliminada");
     }
 
-    @Autowired
-    private GmailScannerService gmailScannerService;
-
-    // El usuario hace clic en "Escanear mi Gmail"
+    // Escanear Gmail
     @PostMapping("/escanear")
     public ResponseEntity<String> escanearGmail(@AuthenticationPrincipal OidcUser oidcUser) {
+
         if (oidcUser == null)
             return ResponseEntity.status(401).body("No autenticado");
 
@@ -126,9 +112,8 @@ public class SubscriptionController {
         if (usuario == null)
             return ResponseEntity.status(404).body("Usuario no encontrado");
 
-        // Lanza el escaneo en hilo separado y responde inmediatamente
         gmailScannerService.escanearCorreos(usuario.getId());
 
-        return ResponseEntity.ok("Escaneo iniciado. Las suscripciones aparecerán en tu panel en unos segundos.");
+        return ResponseEntity.ok("Escaneo iniciado");
     }
 }

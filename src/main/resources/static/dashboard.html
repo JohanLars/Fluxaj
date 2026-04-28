@@ -213,7 +213,8 @@
                             <td>${sub.fechaCobro}</td>
                             <td><span class="badge ${sub.activa ? 'bg-success' : 'bg-danger'}">${sub.activa ? 'Activa' : 'Inactiva'}</span></td>
                             <td>
-                                <button onclick="cargarParaEditar(${sub.id},'${sub.proveedor}',${sub.monto},'${sub.fechaCobro}')" class="btn btn-sm btn-warning">Editar</button>
+                            <button onclick="cargarParaEditar(${sub.id},'${sub.proveedor}',${sub.monto},'${sub.fechaCobro}')" class="btn btn-sm btn-warning">Editar</button>
+<button onclick="eliminarSuscripcion(${sub.id})" class="btn btn-sm btn-danger ms-1">Eliminar</button>
                             </td>
                         </tr>`;
                     sumaTotal += sub.monto;
@@ -425,6 +426,42 @@
     });
 }
 
+function eliminarSuscripcion(id){
+Swal.fire({
+    title:'¿Eliminar suscripción?',
+    text:'Esta acción no se puede deshacer.',
+    icon:'warning',
+    showCancelButton:true,
+    confirmButtonColor:'#d33',
+    cancelButtonColor:'#3085d6',
+    confirmButtonText:'Sí, eliminar',
+    cancelButtonText:'Cancelar',
+    background:'#2b2b2b',
+    color:'#ffffff'
+}).then(r=>{
+    if(r.isConfirmed){
+        fetch(`${API_URL}/${id}`,{method:'DELETE'})
+        .then(res=>{
+            if(res.ok){
+                Swal.fire({
+                    icon:'success',
+                    title:'Eliminado',
+                    background:'#2b2b2b',
+                    color:'#ffffff',
+                    timer:1500,
+                    showConfirmButton:false
+                });
+                cargarSuscripciones();
+            }
+        });
+    }
+});
+}
+
+{Swal.fire({title:'¿Eliminar suscripción?',text:'Esta acción no se puede deshacer.',icon:'warning',showCancelButton:true,confirmButtonColor:'#d33',cancelButtonColor:'#3085d6',confirmButtonText:'Sí, eliminar',cancelButtonText:'Cancelar',background:'#2b2b2b',color:'#ffffff'}).then(r=>{if(r.isConfirmed){fetch(`${API_URL}/${id}`,{method:'DELETE'}).then(res=>{if(res.ok){Swal.fire({icon:'success',title:'Eliminado',background:'#2b2b2b',color:'#ffffff',timer:1500,showConfirmButton:false});cargarSuscripciones();}})}});}
+
+document.addEventListener('DOMContentLoaded', cargarSuscripciones);
+</script>
     
 </script>
 

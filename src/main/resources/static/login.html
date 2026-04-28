@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Fluxaj</title>
+</head>
+<body>
+
+<h2>Iniciar sesión</h2>
+
+<!-- LOGIN NORMAL -->
+<form method="post" action="/login">
+    <input type="text" name="username" placeholder="Correo" required />
+    <br><br>
+
+    <input type="password" name="password" placeholder="Contraseña" required />
+    <br><br>
+
+    <button type="submit">Entrar</button>
+</form>
+
+<hr>
+
+<!-- GOOGLE LOGIN -->
+<a href="/oauth2/authorization/google">
+    Iniciar sesión con Google
+</a>
+
+</body>
+</html>
